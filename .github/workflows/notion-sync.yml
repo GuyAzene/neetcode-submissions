@@ -1,0 +1,32 @@
+# After NeetCode pushes a solution here, record it in the "LeetCode plan" database in Notion.
+# What it records is in .github/scripts/notion_sync.py. The Notion token is the repository
+# secret NOTION_TOKEN. A run that fails sends GitHub's usual email.
+name: Update the LeetCode plan in Notion
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "**/submission-*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One run at a time, so two quick submissions cannot write over each other.
+concurrency:
+  group: notion-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the whole history: the day of a submission is its commit's day
+      - name: Record the submissions in Notion
+        env:
+          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
+        run: python3 .github/scripts/notion_sync.py
