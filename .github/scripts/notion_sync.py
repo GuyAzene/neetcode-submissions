@@ -16,6 +16,9 @@ cannot know whether a solution needed help, so that part stays by hand: set the 
 "Redo in 1 day" in Notion. It never moves a row back, it leaves a redo that came before it
 was due alone, and it writes nothing but those two fields.
 
+Solutions pushed up to START, below, do not count. They are old ones that NeetCode's bulk
+sync brought in on 2026-11-16, solved before the plan began.
+
 NeetCode has to be set to sync accepted solutions only (neetcode.io/profile/github), because
 a pushed file does not say whether it passed. The access token is in NOTION_TOKEN.
 
@@ -37,6 +40,8 @@ API = "https://api.notion.com/v1"
 VERSION = "2025-09-03"
 PLAN = "41afb956-622b-81ea-a997-000b22b488c6"  # the "LeetCode plan" database's data source
 HOME = ZoneInfo("Asia/Jerusalem")  # a submission's day is the day it was in Israel
+# The plan begins after this moment, the bulk sync of the old solutions.
+START = datetime.fromisoformat("2026-11-16T08:07:02+00:00")
 
 # How long each redo waits, in days, and where a row goes from each status.
 WAIT = {"Redo in 1 day": 1, "Redo in 1 week": 7, "Redo in 3 weeks": 21}
@@ -74,8 +79,8 @@ def decide(status, last, done):
 
 
 def submitted(repo="."):
-    """The day of the newest submission of each problem, from the history of the repository.
-    A file that was removed does not count."""
+    """The day of the newest submission of each problem since the plan began, from the
+    history of the repository. Removing a file is not a submission."""
     log = subprocess.run(
         ["git", "-C", repo, "-c", "core.quotepath=off", "log", "--diff-filter=AM"]
         + ["--format=commit %cI", "--name-only"],
@@ -86,7 +91,8 @@ def submitted(repo="."):
     days, day = {}, None
     for line in log.splitlines():
         if line.startswith("commit "):
-            day = datetime.fromisoformat(line[len("commit ") :]).astimezone(HOME).date()
+            moment = datetime.fromisoformat(line[len("commit ") :])
+            day = moment.astimezone(HOME).date() if moment > START else None
             continue
         match = SUBMISSION.match(line)
         if match and day:
@@ -200,7 +206,7 @@ def main():
     dry_run = "--dry-run" in sys.argv[1:]
     days = submitted()
     lines = sync(days, dry_run)
-    print(f"{len(days)} problems have submissions in this repository.")
+    print(f"{len(days)} problems have submissions since the plan began.")
     for line in lines:
         print(("Would record: " if dry_run else "") + line)
     if not lines:

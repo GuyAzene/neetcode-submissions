@@ -104,12 +104,24 @@ class Submitted(unittest.TestCase):
         self.commit(path, "2026-11-16T22:30:00+00:00")  # half past midnight in Israel
         self.assertEqual(notion_sync.submitted(str(self.repo)), {"is-anagram": TUE})
 
-    def test_a_removed_submission_and_other_files_do_not_count(self):
+    def test_removing_a_file_and_other_files_are_not_submissions(self):
         path = "Data Structures & Algorithms/is-anagram/submission-0.py"
         self.commit(path, "2026-11-16T10:00:00+00:00")
         self.commit(path, "2026-11-20T10:00:00+00:00", remove=True)
         self.commit(".github/scripts/notion_sync.py", "2026-11-21T10:00:00+00:00")
         self.assertEqual(notion_sync.submitted(str(self.repo)), {"is-anagram": MON})
+
+    def test_solutions_from_before_the_plan_do_not_count(self):
+        topic = "Data Structures & Algorithms"
+        self.commit(f"{topic}/two-integer-sum/submission-0.py", "2026-11-16T08:07:02+00:00")
+        self.commit(f"{topic}/is-anagram/submission-0.py", "2026-11-16T08:07:03+00:00")
+        self.assertEqual(notion_sync.submitted(str(self.repo)), {"is-anagram": MON})
+
+    def test_an_old_problem_solved_again_counts_from_the_new_solution(self):
+        topic = "Data Structures & Algorithms"
+        self.commit(f"{topic}/two-integer-sum/submission-0.py", "2026-11-16T08:07:02+00:00")
+        self.commit(f"{topic}/two-integer-sum/submission-1.py", "2026-11-17T09:00:00+00:00")
+        self.assertEqual(notion_sync.submitted(str(self.repo)), {"two-integer-sum": TUE})
 
 
 class Sync(unittest.TestCase):
